@@ -40,18 +40,8 @@ fn main() {
     let mut map = HashMap::<i32, HashSet<i32>>::new();
 
     for line in rules.trim().lines() {
-        let line = line.trim();
-        let line: Vec<i32> = line.split("|").map(|n| n.parse().unwrap()).collect();
-        match map.get_mut(&line[0]) {
-            Some(set) => {
-                set.insert(line[1]);
-            }
-            None => {
-                let mut set = HashSet::<i32>::new();
-                set.insert(line[1]);
-                map.insert(line[0], set);
-            }
-        }
+        let line: Vec<i32> = line.trim().split("|").map(|n| n.parse().unwrap()).collect();
+        map.entry(line[0]).or_default().insert(line[1]);
     }
     // removing mut from map
     let rules = map;
@@ -75,7 +65,6 @@ fn main() {
             }
             set.insert(*page);
         }
-
         true
     }
 
