@@ -99,12 +99,15 @@ fn main() {
         }
     };
 
-    updates.retain(|x| !is_correct(&rules, x));
-    for update in &mut updates {
-        update.sort_by(is_before);
-    }
-
-    let solution_2: i32 = updates.iter().map(|u| u[u.len() / 2]).sum();
+    let solution_2: i32 = updates
+        .iter_mut()
+        .filter(|u| !is_correct(&rules, u))
+        .map(|u| {
+            u.sort_by(is_before);
+            u
+        })
+        .map(|u| u[u.len() / 2])
+        .sum();
 
     println!("Solution 2: {}", solution_2);
 }
