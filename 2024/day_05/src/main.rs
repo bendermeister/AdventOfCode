@@ -52,6 +52,7 @@ fn main() {
         .map(|l| l.trim().split(",").map(|n| n.parse().unwrap()).collect())
         .collect();
 
+    /** Checks whether or not a given update is correct */
     fn is_correct(rules: &HashMap<i32, HashSet<i32>>, update: &[i32]) -> bool {
         let mut set = HashSet::new();
 
