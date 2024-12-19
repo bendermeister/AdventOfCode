@@ -127,6 +127,102 @@ mod solution_1 {
     }
 }
 
+mod solution_2 {
+    use std::collections::HashMap;
+    struct Blinker {
+        map: HashMap<(usize, usize), usize>,
+    }
+
+    enum Child {
+        One(usize),
+        Two(usize, usize),
+    }
+
+    fn is_even(d: usize) -> bool {
+        (d & 1) == 0
+    }
+
+    fn count_digits(d: usize) -> usize {
+        let mut ten = 10;
+        let mut n = 1;
+
+        while d / ten != 0 {
+            n += 1;
+            ten *= 10;
+        }
+        n
+    }
+
+    fn apply_rule(s: usize) -> Child {
+        if s == 0 {
+            return Child::One(1);
+        }
+        let num_digits = count_digits(s);
+        if is_even(num_digits) {
+            let (upper, lower) = split_number(s, num_digits);
+            return Child::Two(upper, lower);
+        }
+        Child::One(s * 2024)
+    }
+
+    fn split_number(d: usize, n: usize) -> (usize, usize) {
+        let mut ten = 10;
+        for _ in 1..n / 2 {
+            ten *= 10;
+        }
+        (d / ten, d % ten)
+    }
+
+    impl Blinker{
+        fn new () -> Blinker {
+            Blinker {
+                map: HashMap::new(),
+            }
+        }
+
+        fn blink(&mut self, stone: usize, generation: usize) -> usize {
+            match self.map.get(&(stone, generation)) {
+                Some(v) => return *v,
+                None => (),
+            };
+
+            if generation == 0 {
+                    self.map.insert((stone, generation), 1);
+                    1
+            } else {
+                let child = apply_rule(stone);
+                let value = match child {
+                    Child::One(a) => {
+                        self.blink(a, generation - 1)
+                    }
+                    Child::Two(a, b) => {
+                        self.blink(a, generation - 1) + self.blink(b, generation -1)
+                    }
+                };
+                self.map.insert((stone, generation), value);
+                value
+            }
+            
+        }
+    }
+
+    pub fn run () {
+        //let input = "125 17";
+        let input = "17639 47 3858 0 470624 9467423 5 188";
+        let stones: Vec<usize> = input.trim().split_whitespace().map(|n| n.parse().unwrap()).collect(); 
+        let mut blinker = Blinker::new();
+        let generation = 75;
+
+        let mut sum = 0;
+        for s in &stones {
+            sum += blinker.blink(*s, generation);
+        }
+
+        println!("Solution 1: {}", sum);
+    }
+}
+
 fn main() {
-    solution_1::run();
+    //solution_1::run();
+    solution_2::run();
 }
