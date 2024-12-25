@@ -1,10 +1,17 @@
+use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 struct Point {
-    x: isize,
-    y: isize,
+    x: i32,
+    y: i32,
+}
+
+impl Point {
+    fn new(x: i32, y: i32) -> Point {
+        Point { x, y }
+    }
 }
 
 impl std::ops::Add for Point {
@@ -17,85 +24,89 @@ impl std::ops::Add for Point {
     }
 }
 
-impl Point {
-    fn new(x: isize, y: isize) -> Point {
-        Point { x, y }
-    }
-}
-
 impl std::str::FromStr for Point {
     type Err = ();
     fn from_str(text: &str) -> Result<Point, ()> {
-        let mut iter = text.trim().split(",");
+        let mut iter = text.trim().split(",").map(|n| n.parse());
         let x = match iter.next() {
-            Some(v) => v,
+            Some(val) => match val {
+                Ok(val) => val,
+                Err(_) => return Err(()),
+            },
             None => return Err(()),
         };
         let y = match iter.next() {
-            Some(v) => v,
+            Some(val) => match val {
+                Ok(val) => val,
+                Err(_) => return Err(()),
+            },
             None => return Err(()),
         };
-        match iter.next() {
-            Some(_) => return Err(()),
-            None => (),
-        }
-        let x = match x.parse() {
-            Ok(val) => val,
-            Err(_) => return Err(()),
-        };
-        let y = match y.parse() {
-            Ok(val) => val,
-            Err(_) => return Err(()),
-        };
-
         Ok(Point { x, y })
+    }
+}
+
+struct Node {
+    parent: Point,
+    cost: i32,
+}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.cost.cmp(&other.cost).reverse()
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Node) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Node) -> bool {
+        self.cost == other.cost
+    }
+}
+
+impl Eq for Node {}
+
+impl Node {
+    fn new(parent: Point, cost: i32) -> Node {
+        Node { parent, cost }
     }
 }
 
 struct Maze {
     walls: HashSet<Point>,
-    width: isize,
+    width: i32,
+    tree: HashMap<Point, Node>,
 }
 
 impl Maze {
-    fn new(width: isize) -> Maze {
-        Maze {
+    fn new(width: i32) -> Maze {
+        let maze = Maze {
             walls: HashSet::new(),
+            tree: HashMap::new(),
             width,
-        }
+        };
+        return maze;
     }
 
-    fn add_wall(&mut self, wall: Point) {
-        self.walls.insert(wall);
-    }
-
-    fn is_wall(&self, point: Point) -> bool {
-        if point.x < 0 || point.y < 0 {
+    fn is_wall(&self, wall: Point) -> bool {
+        if wall.x < 0 || wall.y < 0 {
             return true;
         }
-        if point.x >= self.width || point.y >= self.width {
+        if wall.x >= self.width || wall.y >= self.width {
             return true;
         }
-        return self.walls.contains(&point);
+        return self.walls.contains(&wall);
     }
 
-    // NOTE: this is one of the most retarded ways to implement dijkstra, but i am to lazy to
-    // figure out how min heaps work in rust and this is fast enough
-    fn cost_to_solve(&self) -> Option<usize> {
-        let mut graph = HashMap::new();
-        for y in 0..self.width {
-            for x in 0..self.width {
-                let point = Point::new(x, y);
-                if self.is_wall(point) {
-                    continue;
-                }
-                graph.insert(point, std::usize::MAX);
-            }
-        }
-
-        graph.insert(Point::new(0, 0), 0);
+    fn dijkstra(&mut self) -> HashMap<Point, Node> {
+        let mut queue = BinaryHeap::new();
+        queue.push((Node::new(Point::new(0, 0), 0)));
         let mut seen = HashSet::new();
-
         let neighbors = [
             Point::new(1, 0),
             Point::new(-1, 0),
@@ -103,45 +114,40 @@ impl Maze {
             Point::new(0, -1),
         ];
 
-        while seen.len() < graph.len() {
-            let mut current_cost = std::usize::MAX;
-            let mut current_node = *graph.iter().next().unwrap().0;
+        let mut graph = HashMap::new();
 
-            for (node, cost) in graph.iter().filter(|(node, _)| !seen.contains(*node)) {
-                if current_cost >= *cost {
-                    current_node = *node;
-                    current_cost = *cost;
-                }
-            }
-            seen.insert(current_node);
-
-            if current_cost == std::usize::MAX {
+        while let Some(current) = queue.pop() {
+            let point = current.parent;
+            let cost = current.cost;
+            if seen.contains(&point) {
                 continue;
             }
-
-            let neighbors: Vec<_> = neighbors
+            seen.insert(point);
+            let neighbors = neighbors
                 .iter()
-                .map(|n| *n + current_node)
-                .filter(|n| !self.is_wall(*n))
-                .filter(|n| *graph.get(n).unwrap() > current_cost + 1)
-                .collect();
+                .map(|n| *n + point)
+                .filter(|n| !seen.contains(n))
+                .filter(|n| !self.is_wall(*n));
             for n in neighbors {
-                graph.insert(n, current_cost + 1);
+                let entry = graph.entry(n).or_insert(Node::new(point, std::i32::MAX));
+                if entry.cost > cost + 1 {
+                    entry.cost = cost + 1;
+                    entry.parent = point;
+                }
+                queue.push(Node::new(n, cost + 1));
             }
         }
 
-        let cost = *graph
-            .get(&Point::new(self.width - 1, self.width - 1))
-            .unwrap();
-        if cost == std::usize::MAX {
-            return None;
-        }
-        return Some(cost);
+        return graph;
+    }
+
+    fn add_wall(&mut self, wall: Point) {
+        self.walls.insert(wall);
     }
 }
 
 fn main() {
-    /*let input = "
+    let input = "
     5,4
     4,2
     4,5
@@ -169,32 +175,34 @@ fn main() {
     2,0
     ";
 
-        let width = 7;
-        let end = 12;  */
+    let width = 7;
+    let end = 12;
 
     let input = &std::fs::read_to_string("input").unwrap();
     let width = 71;
     let end = 1024;
 
-    let mut maze = Maze::new(width);
     let walls: Vec<Point> = input
         .trim()
         .lines()
         .map(|l| l.trim().parse().unwrap())
         .collect();
 
+    let mut maze = Maze::new(width);
+
     for wall in &walls[..end] {
         maze.add_wall(*wall);
     }
 
-    let solution_1 = maze.cost_to_solve().unwrap();
-    println!("Solution 1: {solution_1}");
+    let solution_1 = maze.dijkstra().get(&Point::new(width - 1, width - 1)).unwrap().cost;
+    println!("Solution 1: {}", solution_1);
 
     for wall in &walls[end..] {
         maze.add_wall(*wall);
-        if let None = maze.cost_to_solve() {
+        if let None = maze.dijkstra().get(&Point::new(width - 1, width - 1)) {
             println!("Solution 2: {},{}", wall.x, wall.y);
             break;
         }
     }
+
 }
