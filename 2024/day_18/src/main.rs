@@ -130,45 +130,47 @@ impl Maze {
             }
         }
 
-        let cost = *graph.get(&Point::new(self.width - 1, self.width - 1)).unwrap();
+        let cost = *graph
+            .get(&Point::new(self.width - 1, self.width - 1))
+            .unwrap();
         if cost == std::usize::MAX {
             return None;
-        } 
+        }
         return Some(cost);
     }
 }
 
 fn main() {
     /*let input = "
-5,4
-4,2
-4,5
-3,0
-2,1
-6,3
-2,4
-1,5
-0,6
-3,3
-2,6
-5,1
-1,2
-5,5
-2,5
-6,5
-1,4
-0,4
-6,4
-1,1
-6,1
-1,0
-0,5
-1,6
-2,0
-";
+    5,4
+    4,2
+    4,5
+    3,0
+    2,1
+    6,3
+    2,4
+    1,5
+    0,6
+    3,3
+    2,6
+    5,1
+    1,2
+    5,5
+    2,5
+    6,5
+    1,4
+    0,4
+    6,4
+    1,1
+    6,1
+    1,0
+    0,5
+    1,6
+    2,0
+    ";
 
-    let width = 7;
-    let end = 12;  */
+        let width = 7;
+        let end = 12;  */
 
     let input = &std::fs::read_to_string("input").unwrap();
     let width = 71;
