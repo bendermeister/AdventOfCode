@@ -1,93 +1,49 @@
-use std::collections::BinaryHeap;
 use std::collections::HashMap;
-use std::collections::HashSet;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-
-struct Point(isize, isize);
-impl std::ops::Add for Point {
-    type Output = Point;
-    fn add(self, other: Point) -> Point {
-        Point(self.0 + other.0, self.1 + other.1)
-    }
-}
-
-struct Node {
-    point: Point,
+fn solve(
+    map: &Vec<Vec<char>>,
+    seen: &mut HashMap<(isize, isize), usize>,
+    x: isize,
+    y: isize,
     cost: usize,
-}
-
-impl Node {
-    fn new(point: Point, cost: usize) -> Node {
-        Node { point, cost }
+) -> Option<usize> {
+    match seen.get(&(x, y)) {
+        Some(val) if *val < cost => return None,
+        _ => (),
     }
-}
+    seen.insert((x, y), cost);
 
-impl Ord for Node {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.cost.cmp(&other.cost).reverse()
+    if x < 0 || y < 0 {
+        return None;
     }
-}
+    let x = x as usize;
+    let y = y as usize;
 
-impl PartialOrd for Node {
-    fn partial_cmp(&self, other: &Node) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
+    if y >= map.len() || x >= map[y].len() {
+        return None;
     }
-}
 
-impl PartialEq for Node {
-    fn eq(&self, _: &Node) -> bool {
-        todo!()
-    }
-}
-
-impl Eq for Node {}
-
-fn is_wall(map: &Vec<Vec<char>>, point: Point) -> bool {
-    if point.0 < 0 || point.1 < 0 {
-        return true;
-    }
-    let x = point.0 as usize;
-    let y = point.1 as usize;
-    if y >= map.len() || x >= map[x].len() {
-        return true;
-    }
     match map[y][x] {
-        '.' => false,
-        '#' => true,
-        _ => panic!("unexpected tile"),
+        'E' => return Some(cost),
+        '#' => return None,
+        _ => (),
     }
-}
+    let mut child = [None, None, None, None];
 
-fn solve_maze(map: &Vec<Vec<char>>, start: Point, end: Point) -> usize {
-    let mut queue = BinaryHeap::new();
-    queue.push(Node::new(start, 0));
-    let mut graph = HashMap::new();
-    let mut seen = HashSet::new();
+    let x = x as isize;
+    let y = y as isize;
 
-    let children = [Point(-1, 0), Point(1, 0), Point(0, 1), Point(0, -1)];
+    child[0] = solve(map, seen, x + 1, y, cost + 1);
+    child[1] = solve(map, seen, x - 1, y, cost + 1);
+    child[2] = solve(map, seen, x, y + 1, cost + 1);
+    child[3] = solve(map, seen, x, y - 1, cost + 1);
 
-    while let Some(current_node) = queue.pop() {
-        let point = current_node.point;
-        let cost = current_node.cost;
-        if seen.contains(&point) {
-            continue;
-        }
-        seen.insert(point);
-        let children = children
-            .iter()
-            .map(|c| *c + point)
-            .filter(|c| !is_wall(map, *c));
-
-        for child in children {
-            let child_cost = *graph.entry(child).or_insert(std::usize::MAX);
-            if cost + 1 < child_cost {
-                graph.insert(child, cost + 1);
-                queue.push(Node::new(child, cost + 1));
-            }
-        }
-    }
-    return *graph.entry(end).or_insert(std::usize::MAX);
+    child.iter().fold(None, |acc, e| match (acc, *e) {
+        (None, None) => None,
+        (Some(val), None) => Some(val),
+        (None, Some(val)) => Some(val),
+        (Some(a), Some(b)) => Some(if a < b { a } else { b }),
+    })
 }
 
 fn main() {
@@ -106,57 +62,43 @@ fn main() {
 #.#...#.#.#...#
 #.#.#.#.#.#.###
 #...#...#...###
-###############
-";
-
+###############";
     let mut map: Vec<Vec<char>> = input
         .trim()
         .lines()
         .map(|l| l.trim().chars().collect())
         .collect();
-    let height = map.len();
-    let width = map[0].len();
 
-    let mut start = Point(0, 0);
-    let mut end = Point(0, 0);
-
-    for y in 0..height {
-        for x in 0..width {
-            match map[y][x] {
-                'S' => {
-                    start = Point(x as isize, y as isize);
-                    map[y][x] = '.';
-                }
-                'E' => {
-                    end = Point(x as isize, y as isize);
-                    map[y][x] = '.';
-                }
-                _ => (),
-            }
-        }
-    }
-
-    let base_time = solve_maze(&map, start, end);
-
-    let children = [Point(1, 0), Point(-1, 0), Point(0, 1), Point(0, -1)];
-    for y in 1..height-1 {
-        for x in 1..width-1 {
-            let point = Point(x as isize, y as isize);
-            let children = children.iter().map(|c| *c + point);
-            let point_char = map[y][x];
-            map[y][x] = '.';
-            for child in children {
-                let x = child.0 as usize;
-                let y = child.1 as usize;
-                let child_char = map[y][x];
+    let mut start_x = 0;
+    let mut start_y = 0;
+    'outer: for y in 0..map.len() {
+        for x in 0..map[y].len() {
+            if map[y][x] == 'S' {
                 map[y][x] = '.';
-                let time = solve_maze(&map, start, end);
-                println!("{time}");
-                map[y][x] = child_char;
+                start_x = x as isize;
+                start_y = y as isize;
+                break 'outer;
             }
-            map[y][x] = point_char;
         }
     }
 
+    let mut seen = HashMap::new();
+    let base_time = solve(&map, &mut seen, start_x, start_y, 0).unwrap();
     println!("Base Time: {base_time}");
+
+    let solutions = Vec::new();
+
+    for y in 1..map.len() - 1 {
+        for x in 1..map[y].len() - 1 {
+            let x = x as isize;
+            let y = y as isize;
+
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                }
+            }
+
+        }
+    }
+
 }
