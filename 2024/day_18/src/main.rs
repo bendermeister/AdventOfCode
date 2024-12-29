@@ -178,7 +178,7 @@ fn main() {
     let width = 7;
     let end = 12;
 
-    let input = &std::fs::read_to_string("input").unwrap();
+    //let input = &std::fs::read_to_string("input").unwrap();
     let width = 71;
     let end = 1024;
 

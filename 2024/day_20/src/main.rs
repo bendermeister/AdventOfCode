@@ -1,101 +1,274 @@
-use std::collections::HashSet;
-use std::collections::HashMap;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
-enum Tile {
-    Free(usize),
-    Wall,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 struct Point {
     x: isize,
     y: isize,
 }
 
-impl Point {
-    fn new(x: isize, y: isize) -> Point {
-        Point { x, y }
-    }
-    fn to_coords(&self) -> (usize, usize) {
-        (self.x.try_into().unwrap(), self.y.try_into().unwrap())
-    }
-    fn to_string(&self) -> String {
-        format!("({},{})", self.x, self.y)
-    }
-}
-
 impl std::ops::Add for Point {
-    type Output = Self;
-    fn add(self, other: Self) -> Self::Output {
-        Self {
+    type Output = Point;
+    fn add(self, other: Point) -> Point {
+        Point {
             x: self.x + other.x,
             y: self.y + other.y,
         }
     }
 }
 
+impl Point {
+    fn new(x: isize, y: isize) -> Point {
+        Point { x, y }
+    }
+    fn neighbors(self) -> [Point; 4] {
+        [
+            Point::new(-1, 0) + self,
+            Point::new(1, 0) + self,
+            Point::new(0, -1) + self,
+            Point::new(0, 1) + self,
+        ]
+    }
+    #[allow(unused)]
+    fn to_string(&self) -> String {
+        format!("({},{})", self.x, self.y)
+    }
+}
+
 impl From<(usize, usize)> for Point {
-    fn from(p: (usize, usize)) -> Self {
+    fn from((x, y): (usize, usize)) -> Self {
         Point {
-            x: p.0.try_into().unwrap(),
-            y: p.1.try_into().unwrap(),
+            x: x.try_into().unwrap(),
+            y: y.try_into().unwrap(),
         }
     }
 }
 
-fn neighbor_point_deltas() -> [Point; 4] {
-    [
-        Point::new(1, 0),
-        Point::new(-1, 0),
-        Point::new(0, 1),
-        Point::new(0, -1),
-    ]
+#[derive(Debug)]
+enum Tile {
+    Wall,
+    Path(usize),
 }
 
-fn explore_helper(
-    seen: &mut HashSet<Point>,
-    map: &mut Vec<Vec<Tile>>,
-    current: Point,
-    end: Point,
-) -> Option<usize> {
-    if seen.contains(&current) {
-        return None;
+impl Tile {
+    fn path_cost(&self) -> usize {
+        match self {
+            Tile::Path(cost) => *cost,
+            Tile::Wall => panic!("did not expect wall"),
+        }
     }
-    seen.insert(current);
-
-    let (x, y) = current.to_coords();
-    if current == end {
-        map[y][x] = Tile::Free(0);
-        return Some(1);
-    }
-    match map[y][x] {
-        Tile::Wall => return None,
-        _ => (),
-    }
-
-    let neighbors: Vec<_> = neighbor_point_deltas()
-        .iter()
-        .map(|n| *n + current)
-        .map(|n| explore_helper(seen, map, n, end))
-        .filter(|n| match n {
-            Some(_) => true,
-            None => false,
-        })
-        .map(|n| n.unwrap())
-        .collect();
-    assert!(neighbors.len() == 1);
-
-    let cost = neighbors[0];
-    map[y][x] = Tile::Free(cost);
-    return Some(cost + 1);
 }
 
-fn explore(map: &mut Vec<Vec<Tile>>, start: Point, end: Point) -> usize {
-    let mut seen = HashSet::new();
-    explore_helper(&mut seen, map, start, end).unwrap() - 1
+#[derive(Copy, Clone, Eq)]
+struct Node {
+    point: Point,
+    cost: usize,
+}
+
+impl Node {
+    fn new(point: Point, cost: usize) -> Node {
+        Node { point, cost }
+    }
+}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.cost.cmp(&other.cost)
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Node) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Node {
+    fn eq(&self, other: &Node) -> bool {
+        self.cost.eq(&other.cost)
+    }
+}
+
+struct Race {
+    width: isize,
+    height: isize,
+    tiles: HashMap<Point, Tile>,
+    base_time: usize,
+}
+
+impl Race {
+    fn is_in_bounds(&self, point: Point) -> bool {
+        if point.x < 0 || point.y < 0 {
+            return false;
+        }
+        if point.y >= self.height || point.x >= self.width {
+            return false;
+        }
+        return true;
+    }
+
+    #[allow(unused)]
+    fn is_wall(&self, point: Point) -> bool {
+        if !self.is_in_bounds(point) {
+            return true;
+        }
+        match self.tiles.get(&point).unwrap() {
+            Tile::Path(_) => false,
+            Tile::Wall => true,
+        }
+    }
+
+    // fn init_cheat_time(&mut self) {
+    //     for y in 0..self.height {
+    //         for x in 0..self.width {
+    //             let root = Point::new(x, y);
+    //             if self.is_wall(root) {
+    //                 continue;
+    //             }
+    //             let root_cost = self.tiles.get(&root).unwrap().path_cost();
+    //
+    //             for n in root.neighbors().iter() {
+    //                 for m in n.neighbors().iter() {
+    //                     if !self.is_in_bounds(*m) {
+    //                         continue;
+    //                     }
+    //                     if let Tile::Path(cost) = self.tiles.get(m).unwrap() {
+    //                         let total_cost = (self.base_time - cost) + 2 + root_cost;
+    //                         if total_cost < self.base_time {
+    //                             self.cheat_time.push(total_cost);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+
+    fn dijkstra(&mut self, start: Point) {
+        let mut queue = BinaryHeap::new();
+        let mut seen = HashSet::new();
+        queue.push(Node::new(start, 0));
+        self.tiles.insert(start, Tile::Path(0));
+        while let Some(node) = queue.pop() {
+            if seen.contains(&node.point) {
+                continue;
+            }
+            seen.insert(node.point);
+
+            let neighbors = node.point.neighbors();
+            let neighbors: Vec<_> = neighbors
+                .iter()
+                .filter(|n| self.is_in_bounds(**n))
+                .map(|n| (n, node.cost + 1))
+                .collect();
+
+            for (point, cost) in neighbors {
+                match self.tiles.get(point).unwrap() {
+                    Tile::Wall => continue,
+                    Tile::Path(current_cost) => {
+                        if *current_cost > cost {
+                            self.tiles.insert(*point, Tile::Path(cost));
+                            queue.push(Node::new(*point, cost));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl std::str::FromStr for Race {
+    type Err = ();
+    fn from_str(input: &str) -> Result<Race, ()> {
+        let map: Vec<Vec<char>> = input
+            .trim()
+            .lines()
+            .map(|l| l.trim().chars().collect())
+            .collect();
+
+        let height = map.len();
+        if height == 0 {
+            return Err(());
+        }
+        let width = map[0].len();
+        if width == 0 {
+            return Err(());
+        }
+
+        let mut race = Race {
+            width: width as isize,
+            height: height as isize,
+            tiles: HashMap::new(),
+            base_time: 0,
+            //cheat_time: Vec::new(),
+        };
+
+        let mut start = Point::new(0, 0);
+        let mut end = Point::new(0, 0);
+        for y in 0..height {
+            for x in 0..width {
+                match map[y][x] {
+                    '.' => {
+                        race.tiles
+                            .insert(Point::from((x, y)), Tile::Path(std::usize::MAX));
+                    }
+                    '#' => {
+                        race.tiles.insert(Point::from((x, y)), Tile::Wall);
+                    }
+                    'E' => {
+                        end = Point::from((x, y));
+                        race.tiles
+                            .insert(Point::from((x, y)), Tile::Path(std::usize::MAX));
+                    }
+                    'S' => {
+                        start = Point::from((x, y));
+                        race.tiles
+                            .insert(Point::from((x, y)), Tile::Path(std::usize::MAX));
+                    }
+                    _ => panic!("unexpected token"),
+                }
+            }
+        }
+
+        race.dijkstra(start);
+        race.base_time = race.tiles.get(&end).unwrap().path_cost();
+        return Ok(race);
+    }
+}
+
+fn cheat_times(race: &Race, cheat_time: isize) -> Vec<usize> {
+    let mut cheats = Vec::new();
+    for (root_point, tile) in race.tiles.iter() {
+        let root_cost = match tile {
+            Tile::Path(cost) => cost,
+            Tile::Wall => continue,
+        };
+
+        for dy in -cheat_time..=cheat_time {
+            for dx in -cheat_time..=cheat_time {
+                let distance = dx.abs() + dy.abs();
+                if distance > cheat_time {
+                    continue;
+                }
+                let distance = distance as usize;
+                let point = *root_point + Point::new(dx, dy);
+                if !race.is_in_bounds(point) {
+                    continue;
+                }
+                if let Tile::Path(cost) = race.tiles.get(&point).unwrap() {
+                    let total_cost = (race.base_time - cost) + distance + root_cost;
+                    if total_cost < race.base_time {
+                        cheats.push(total_cost);
+                    }
+                }
+            }
+        }
+    }
+
+    return cheats;
 }
 
 fn main() {
+    #[allow(unused)]
     let input = "
 ###############
 #...#...#.....#
@@ -113,51 +286,20 @@ fn main() {
 #...#...#...###
 ###############";
 
-    let mut map = Vec::new();
-    let mut start = Point::new(0, 0);
-    let mut end = Point::new(0, 0);
-    let mut points = Vec::new();
+    let input = &std::fs::read_to_string("input").unwrap();
 
-    for (y, line) in input.trim().lines().enumerate() {
-        let mut row = Vec::new();
-        for (x, c) in line.trim().chars().enumerate() {
-            match c {
-                '.' => {
-                    row.push(Tile::Free(0));
-                    points.push(Point::from((x, y)));
-                }
-                '#' => row.push(Tile::Wall),
-                'S' => {
-                    start = Point::from((x, y));
-                    points.push(Point::from((x, y)));
-                    row.push(Tile::Free(0));
-                }
-                'E' => {
-                    end = Point::from((x, y));
-                    points.push(Point::from((x, y)));
-                    row.push(Tile::Free(0));
-                }
-                _ => panic!("encountered unexpected tile"),
-            }
-        }
-        map.push(row);
-    }
+    let race: Race = input.parse().unwrap();
+    println!("Base Time: {}", race.base_time);
 
-    let base_time = explore(&mut map, start, end);
-    println!("Base Time: {base_time}");
+    let solution_1 = cheat_times(&race, 2)
+        .iter()
+        .filter(|c| **c <= race.base_time - 100)
+        .count();
+    println!("Solution 1: {}", solution_1);
 
-    let mut result = Vec::new();
-
-    for point in points.iter() {
-        cheat(&mut result, &map, *point);
-    }
-
-    let mut histo = HashMap::new();
-    for r in result.iter().filter(|r| **r < base_time) {
-        *histo.entry(r).or_insert(0) += 1;
-    }
-
-    for (k, v) in histo.iter() {
-        println!("{k}: {v}")
-    }
+    let solution_2 = cheat_times(&race, 20)
+        .iter()
+        .filter(|c| **c <= race.base_time - 100)
+        .count();
+    println!("Solution 2: {}", solution_2);
 }
