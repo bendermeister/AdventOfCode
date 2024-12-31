@@ -117,32 +117,6 @@ impl Race {
         }
     }
 
-    // fn init_cheat_time(&mut self) {
-    //     for y in 0..self.height {
-    //         for x in 0..self.width {
-    //             let root = Point::new(x, y);
-    //             if self.is_wall(root) {
-    //                 continue;
-    //             }
-    //             let root_cost = self.tiles.get(&root).unwrap().path_cost();
-    //
-    //             for n in root.neighbors().iter() {
-    //                 for m in n.neighbors().iter() {
-    //                     if !self.is_in_bounds(*m) {
-    //                         continue;
-    //                     }
-    //                     if let Tile::Path(cost) = self.tiles.get(m).unwrap() {
-    //                         let total_cost = (self.base_time - cost) + 2 + root_cost;
-    //                         if total_cost < self.base_time {
-    //                             self.cheat_time.push(total_cost);
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     fn dijkstra(&mut self, start: Point) {
         let mut queue = BinaryHeap::new();
         let mut seen = HashSet::new();
@@ -199,7 +173,6 @@ impl std::str::FromStr for Race {
             height: height as isize,
             tiles: HashMap::new(),
             base_time: 0,
-            //cheat_time: Vec::new(),
         };
 
         let mut start = Point::new(0, 0);
