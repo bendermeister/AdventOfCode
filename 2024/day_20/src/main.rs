@@ -237,7 +237,7 @@ fn cheat_times(race: &Race, cheat_time: isize) -> Vec<usize> {
         }
     }
 
-    return cheats;
+return cheats;
 }
 
 fn main() {
