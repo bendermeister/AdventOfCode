@@ -27,33 +27,28 @@ fn solve1(input: &str) -> isize {
     let height = puzzle.len();
     let width = puzzle[0].len();
 
-    let positions = (0..height)
-        .map(|y| (0..width).map(move |x| (x, y)))
-        .flatten()
-        .map(|(x, y)| Point::new(x as isize, y as isize));
-
-    let pget = |p: Point| match p.as_coords_with_bound(width, height) {
-        Some((x, y)) => Some(puzzle[y][x]),
-        None => None,
+    let pget = |p: Point| {
+        p.as_coords_with_bound(width, height)
+            .map(|(x, y)| puzzle[y][x])
     };
 
     let directions = directions();
 
-    let mut count = 0;
-    for orig in positions {
-        for dir in directions.iter() {
-            count += match (
-                pget(orig + dir.scale(0)),
-                pget(orig + dir.scale(1)),
-                pget(orig + dir.scale(2)),
-                pget(orig + dir.scale(3)),
-            ) {
-                (Some('X'), Some('M'), Some('A'), Some('S')) => 1,
-                _ => 0,
-            }
-        }
-    }
-    return count;
+    (0..height as isize)
+        .flat_map(|y| (0..width as isize).map(move |x| Point::new(x, y)))
+        .flat_map(|orig| directions.iter().map(move |dir| (orig, *dir)))
+        .filter(|(orig, dir)| {
+            matches!(
+                (
+                    pget(*orig + dir.scale(0)),
+                    pget(*orig + dir.scale(1)),
+                    pget(*orig + dir.scale(2)),
+                    pget(*orig + dir.scale(3)),
+                ),
+                (Some('X'), Some('M'), Some('A'), Some('S'))
+            )
+        })
+        .count() as isize
 }
 
 fn solve2(input: &str) -> isize {
@@ -63,8 +58,7 @@ fn solve2(input: &str) -> isize {
     let width = puzzle[0].len();
 
     let positions = (1..height - 1)
-        .map(|y| (1..width - 1).map(move |x| (x, y)))
-        .flatten()
+        .flat_map(|y| (1..width - 1).map(move |x| (x, y)))
         .filter(|(x, y)| puzzle[*y][*x] == 'A');
 
     let mut count = 0;
@@ -83,7 +77,7 @@ fn solve2(input: &str) -> isize {
         };
     }
 
-    return count;
+    count
 }
 
 #[test]

@@ -2,6 +2,7 @@ mod d01;
 mod d02;
 mod d03;
 mod d04;
+mod d05;
 
 fn format_solution(day: usize, solution: (isize, isize)) {
     println!("Day: {:0>2}", day);
@@ -15,4 +16,5 @@ fn main() {
     format_solution(2, d02::solution());
     format_solution(3, d03::solution());
     format_solution(4, d04::solution());
+    format_solution(5, d05::solution());
 }

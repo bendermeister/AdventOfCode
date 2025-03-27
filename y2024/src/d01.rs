@@ -18,8 +18,7 @@ fn solve1(input: &str) -> isize {
     v0.sort();
     v1.sort();
 
-    let solution = v0.iter().zip(v1.iter()).map(|(n0, n1)| (n0 - n1).abs()).sum();
-    return solution;
+    v0.iter().zip(v1.iter()).map(|(n0, n1)| (n0 - n1).abs()).sum()
 }
 
 fn solve2(input: &str) -> isize {
@@ -37,8 +36,7 @@ fn solve2(input: &str) -> isize {
         *h.entry(n1).or_insert(0) += 1;
     }
 
-    let solution: isize = v.iter().map(|n| *n * h.get(n).map_or(0, |n| *n)).sum();
-    return solution;
+    v.iter().map(|n| *n * h.get(n).map_or(0, |n| *n)).sum()
 }
 
 pub fn solution() -> (isize, isize) {

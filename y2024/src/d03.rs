@@ -17,7 +17,7 @@ fn solve2(input: &str) -> isize {
     input
         .split("do()")
         .map(|s| s.split("don't()").next().unwrap())
-        .map(|s| solve1(s))
+        .map(solve1)
         .sum()
 }
 

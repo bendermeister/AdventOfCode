@@ -6,19 +6,14 @@ fn is_safe(line: &[isize]) -> bool {
             (acc.0.max(n.0), acc.1 && n.1, acc.2 && n.2)
         });
 
-    return dist <= 3 && (asc || desc);
+    dist <= 3 && (asc || desc)
 }
 
 fn parse_input(input: &str) -> Vec<Vec<isize>> {
     input
         .trim()
         .lines()
-        .map(|l| {
-            l.trim()
-                .split_whitespace()
-                .map(|n| n.parse().unwrap())
-                .collect()
-        })
+        .map(|l| l.split_whitespace().map(|n| n.parse().unwrap()).collect())
         .collect()
 }
 
@@ -40,7 +35,7 @@ fn solve2(input: &str) -> isize {
             }
         }
     }
-    return solution;
+    solution
 }
 
 #[test]

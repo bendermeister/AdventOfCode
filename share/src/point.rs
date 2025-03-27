@@ -23,10 +23,7 @@ impl Point {
     }
 
     pub fn as_coords_with_bound(&self, width: usize, height: usize) -> Option<(usize, usize)> {
-        let (x, y) = match self.as_coords() {
-            Some(n) => n,
-            None => return None,
-        };
+        let (x, y) = self.as_coords()?;
         if x >= width || y >= height {
             return None;
         }
